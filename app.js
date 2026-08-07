@@ -290,6 +290,9 @@ function formatCellValue(key, value, row) {
     if (key === 'averageSpeed') {
       return escapeHtml(value.toFixed(1));
     }
+    if (key === 'year') {
+      return escapeHtml(Math.round(value));
+    }
     return escapeHtml(Math.round(value).toLocaleString());
   }
 
