@@ -286,14 +286,16 @@ function renderTable(payload) {
       : payload;
 
     return `
-      <table>
-        <thead><tr>${headers.map((header) => {
-          const isActive = sortState.key === header;
-          const arrow = isActive ? (sortState.direction === 'asc' ? ' ▲' : ' ▼') : '';
-          return `<th data-sort-key="${escapeHtml(header)}" class="sortable${isActive ? ' sorted' : ''}">${escapeHtml(formatHeaderLabel(header))}${arrow}</th>`;
-        }).join('')}</tr></thead>
-        <tbody>${rows.map((row) => `<tr>${headers.map((header) => `<td>${formatCellValue(header, row[header])}</td>`).join('')}</tr>`).join('')}</tbody>
-      </table>
+      <div class="table-scroll">
+        <table>
+          <thead><tr>${headers.map((header) => {
+            const isActive = sortState.key === header;
+            const arrow = isActive ? (sortState.direction === 'asc' ? ' ▲' : ' ▼') : '';
+            return `<th data-sort-key="${escapeHtml(header)}" class="sortable${isActive ? ' sorted' : ''}">${escapeHtml(formatHeaderLabel(header))}${arrow}</th>`;
+          }).join('')}</tr></thead>
+          <tbody>${rows.map((row) => `<tr>${headers.map((header) => `<td>${formatCellValue(header, row[header])}</td>`).join('')}</tr>`).join('')}</tbody>
+        </table>
+      </div>
     `;
   }
 
@@ -304,10 +306,12 @@ function renderTable(payload) {
     }
 
     return `
-      <table>
-        <thead><tr><th>Field</th><th>Value</th></tr></thead>
-        <tbody>${entries.map(([key, value]) => `<tr><td>${escapeHtml(formatHeaderLabel(key))}</td><td>${formatCellValue(key, value)}</td></tr>`).join('')}</tbody>
-      </table>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Field</th><th>Value</th></tr></thead>
+          <tbody>${entries.map(([key, value]) => `<tr><td>${escapeHtml(formatHeaderLabel(key))}</td><td>${formatCellValue(key, value)}</td></tr>`).join('')}</tbody>
+        </table>
+      </div>
     `;
   }
 
