@@ -4,6 +4,8 @@ const proxyBaseUrl = '/proxy/';
 const resultSummary = document.getElementById('resultSummary');
 const queryList = document.getElementById('queryList');
 const resultsPanel = document.getElementById('resultsPanel');
+const chartPanelSection = document.getElementById('chartPanelSection');
+const chartPanel = document.getElementById('chartPanel');
 
 let queryDialog = null;
 let dialogBody = null;
@@ -12,64 +14,73 @@ let runQueryBtn = null;
 
 const endpoints = [
   {
-    title: 'Recent activities',
-    description: 'List recent rides with a limit.',
+    title: 'Recent rides',
+    description: 'Recent ride details with a count limit.',
     path: '/activities/recent/{limit}',
     inputs: [{ name: 'limit', label: 'Limit', placeholder: '10' }],
     builder: ({ limit }) => `/activities/recent/${encodeURIComponent(limit || '10')}`,
     curated: true
   },
   {
-    title: 'Rides by bike',
-    description: 'Summarize rides grouped by bike since a given date.',
+    title: 'Rides by bike since date',
+    description: 'Summary of rides grouped by bike since a date.',
     path: '/activities/rides-by-bike?sinceDate={sinceDate}',
     inputs: [{ name: 'sinceDate', label: 'Since date', type: 'date', placeholder: `${new Date().getFullYear()}-01-01` }],
     builder: ({ sinceDate }) => `/activities/rides-by-bike?sinceDate=${encodeURIComponent(sinceDate || `${new Date().getFullYear()}-01-01`)}`,
     chart: { xKey: 'name', yKey: 'distance', title: 'Total distance by bike', xLabel: 'Bike', yLabel: 'Total distance (km)' }
   },
   {
-    title: 'Long rides',
-    description: 'Show long ride activities.',
-    path: '/activities/long-rides',
+    title: 'Distance range counts',
+    description: 'Ride counts within distance buckets.',
+    path: '/activities/distance-range-counts',
     inputs: [],
-    builder: () => '/activities/long-rides',
-    curated: true
-  },
-  {
-    title: 'Long rides per year',
-    description: 'Show long ride counts grouped by year.',
-    path: '/activities/long-rides-per-year',
-    inputs: [],
-    builder: () => '/activities/long-rides-per-year'
-  },
-  {
-    title: 'Long rides by bike',
-    description: 'Show long rides organized by bike.',
-    path: '/activities/long-rides-by-bike',
-    inputs: [],
-    builder: () => '/activities/long-rides-by-bike'
-  },
-  {
-    title: 'Eddington number',
-    description: 'Retrieve the Eddington number for the rides.',
-    path: '/activities/eddington-number',
-    inputs: [],
-    builder: () => '/activities/eddington-number'
+    builder: () => '/activities/distance-range-counts',
+    columnOrder: ['distanceRange', 'rideCount']
   },
   {
     title: 'Earliest ride by bike',
-    description: 'Find the earliest ride for each bike.',
+    description: 'The earliest ride for each bike.',
     path: '/activities/earliest-ride-by-bike',
     inputs: [],
     builder: () => '/activities/earliest-ride-by-bike'
   },
   {
-    title: 'Distance range counts',
-    description: 'Count rides within distance buckets.',
-    path: '/activities/distance-range-counts',
+    title: 'Bike Odometer',
+    description: 'Total distance per bike.',
+    path: '/activities/odometer',
     inputs: [],
-    builder: () => '/activities/distance-range-counts',
-    columnOrder: ['distanceRange', 'rideCount']
+    builder: () => '/activities/odometer',
+    totalRow: true,
+    chart: { xKey: 'name', yKey: 'distance', title: 'Total distance by bike', xLabel: 'Bike', yLabel: 'Total distance (km)' }
+  },
+  {
+    title: 'Long rides by bike',
+    description: 'Long ride counts grouped by bike.',
+    path: '/activities/long-rides-by-bike',
+    inputs: [],
+    builder: () => '/activities/long-rides-by-bike'
+  },
+  {
+    title: 'Long rides per year',
+    description: 'Long ride counts grouped by year.',
+    path: '/activities/long-rides-per-year',
+    inputs: [],
+    builder: () => '/activities/long-rides-per-year'
+  },
+  {
+    title: 'Eddington number',
+    description: 'Greatest ride count/distance combination.',
+    path: '/activities/eddington-number',
+    inputs: [],
+    builder: () => '/activities/eddington-number'
+  },
+  {
+    title: 'Long rides',
+    description: 'Long ride details.',
+    path: '/activities/long-rides',
+    inputs: [],
+    builder: () => '/activities/long-rides',
+    curated: true
   }
 ];
 
@@ -86,10 +97,29 @@ const DEFAULT_ATTRIBUTES = new Set([
   'distance',
   'movingTime',
   'totalElevationGain',
+  'climbPerKm',
   'startDateLocal',
   'sufferScore',
   'bike'
 ]);
+
+function withComputedFields(payload) {
+  if (!Array.isArray(payload)) return payload;
+  return payload.map((row) => {
+    if (row && typeof row === 'object' && typeof row.distance === 'number' && typeof row.totalElevationGain === 'number') {
+      const climbPerKm = row.distance > 0 ? row.totalElevationGain / row.distance : 0;
+      const result = {};
+      Object.keys(row).forEach((key) => {
+        result[key] = row[key];
+        if (key === 'totalElevationGain') {
+          result.climbPerKm = climbPerKm;
+        }
+      });
+      return result;
+    }
+    return row;
+  });
+}
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -257,8 +287,10 @@ function formatCellValue(key, value, row) {
     if (SECONDS_KEYS.has(key)) {
       return escapeHtml(formatSecondsAsHHMM(value));
     }
-    const rounded = key === 'averageSpeed' ? value.toFixed(1) : Math.round(value);
-    return escapeHtml(rounded);
+    if (key === 'averageSpeed') {
+      return escapeHtml(value.toFixed(1));
+    }
+    return escapeHtml(Math.round(value).toLocaleString());
   }
 
   return escapeHtml(value && typeof value === 'object' ? JSON.stringify(value) : value);
@@ -270,6 +302,24 @@ function compareValues(a, b) {
   if (b == null) return 1;
   if (typeof a === 'number' && typeof b === 'number') return a - b;
   return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
+}
+
+function renderTotalRow(headers, rows) {
+  let labeled = false;
+  const cells = headers.map((header) => {
+    const allNumeric = rows.length > 0 && rows.every((row) => typeof row[header] === 'number');
+    if (allNumeric) {
+      const total = rows.reduce((sum, row) => sum + row[header], 0);
+      return `<td>${formatCellValue(header, total)}</td>`;
+    }
+    if (!labeled) {
+      labeled = true;
+      return '<td>Total</td>';
+    }
+    return '<td></td>';
+  }).join('');
+
+  return `<tfoot><tr class="total-row">${cells}</tr></tfoot>`;
 }
 
 function renderTable(payload) {
@@ -290,15 +340,20 @@ function renderTable(payload) {
       })
       : payload;
 
+    const totalRowHtml = lastQueryEndpoint && lastQueryEndpoint.totalRow
+      ? renderTotalRow(headers, payload)
+      : '';
+
     return `
       <div class="table-scroll">
         <table>
           <thead><tr>${headers.map((header) => {
-            const isActive = sortState.key === header;
-            const arrow = isActive ? (sortState.direction === 'asc' ? ' ▲' : ' ▼') : '';
-            return `<th data-sort-key="${escapeHtml(header)}" class="sortable${isActive ? ' sorted' : ''}">${escapeHtml(formatHeaderLabel(header))}${arrow}</th>`;
-          }).join('')}</tr></thead>
+      const isActive = sortState.key === header;
+      const arrow = isActive ? (sortState.direction === 'asc' ? ' ▲' : ' ▼') : '';
+      return `<th data-sort-key="${escapeHtml(header)}" class="sortable${isActive ? ' sorted' : ''}">${escapeHtml(formatHeaderLabel(header))}${arrow}</th>`;
+    }).join('')}</tr></thead>
           <tbody>${rows.map((row) => `<tr>${headers.map((header) => `<td>${formatCellValue(header, row[header], row)}</td>`).join('')}</tr>`).join('')}</tbody>
+          ${totalRowHtml}
         </table>
       </div>
     `;
@@ -441,7 +496,7 @@ function hideChartTooltip() {
 }
 
 function wireChartInteractions() {
-  resultsPanel.querySelectorAll('.chart-bar-group').forEach((group) => {
+  chartPanel.querySelectorAll('.chart-bar-group').forEach((group) => {
     const name = group.dataset.name;
     const value = group.dataset.value;
 
@@ -470,10 +525,10 @@ function renderQueryInfo(endpoint, values) {
 
   const paramsHtml = endpoint.inputs.length
     ? `<ul class="query-params">${endpoint.inputs.map((input) => {
-        const rawValue = values[input.name];
-        const display = rawValue ? rawValue : `${input.placeholder || 'default'} (default)`;
-        return `<li><strong>${escapeHtml(input.label)}:</strong> ${escapeHtml(display)}</li>`;
-      }).join('')}</ul>`
+      const rawValue = values[input.name];
+      const display = rawValue ? rawValue : `${input.placeholder || 'default'} (default)`;
+      return `<li><strong>${escapeHtml(input.label)}:</strong> ${escapeHtml(display)}</li>`;
+    }).join('')}</ul>`
     : '';
 
   return `
@@ -485,14 +540,9 @@ function renderQueryInfo(endpoint, values) {
 }
 
 function renderResults() {
-  const chartHtml = lastQueryEndpoint && lastQueryEndpoint.chart && Array.isArray(lastPayload)
-    ? renderBarChart(lastPayload, lastQueryEndpoint.chart)
-    : '';
-
   resultsPanel.innerHTML = `
     ${renderQueryInfo(lastQueryEndpoint, lastQueryValues)}
     ${renderTable(lastPayload)}
-    ${chartHtml}
   `;
 
   resultsPanel.querySelectorAll('th[data-sort-key]').forEach((th) => {
@@ -508,7 +558,13 @@ function renderResults() {
     });
   });
 
-  wireChartInteractions();
+  const hasChart = lastQueryEndpoint && lastQueryEndpoint.chart && Array.isArray(lastPayload) && lastPayload.length;
+  chartPanelSection.hidden = !hasChart;
+  chartPanel.innerHTML = hasChart ? renderBarChart(lastPayload, lastQueryEndpoint.chart) : '';
+
+  if (hasChart) {
+    wireChartInteractions();
+  }
 }
 
 async function runSelectedQuery() {
@@ -550,8 +606,8 @@ async function runSelectedQuery() {
       parsedPayload = payloadText;
     }
 
-    lastPayload = parsedPayload;
-    lastAttributeKeys = orderAttributeKeys(getAttributeKeys(parsedPayload), endpoint.columnOrder);
+    lastPayload = withComputedFields(parsedPayload);
+    lastAttributeKeys = orderAttributeKeys(getAttributeKeys(lastPayload), endpoint.columnOrder);
     if (endpoint.curated) {
       const defaultKeys = lastAttributeKeys.filter((key) => DEFAULT_ATTRIBUTES.has(key));
       selectedAttributes = new Set(defaultKeys.length ? defaultKeys : lastAttributeKeys);
@@ -570,6 +626,8 @@ async function runSelectedQuery() {
       ${renderQueryInfo(lastQueryEndpoint, lastQueryValues)}
       <p class="empty-state">Request failed: ${escapeHtml(error.message)}</p>
     `;
+    chartPanelSection.hidden = true;
+    chartPanel.innerHTML = '';
     resultSummary.textContent = 'Request failed.';
   } finally {
     selectedEndpoint = null;

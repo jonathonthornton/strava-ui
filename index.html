@@ -3,16 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Strava Activities Explorer</title>
-    <link rel="stylesheet" href="styles.css?v=3" />
+    <title>Strava Ride Explorer</title>
+    <link rel="stylesheet" href="styles.css?v=4" />
   </head>
   <body>
     <main class="app-shell">
       <section class="hero-card">
         <p class="eyebrow">Jon's Strava UI</p>
-        <h1>Explore your Strava activities</h1>
+        <h1>Explore Jon's Strava rides</h1>
         <p class="hero-copy">
-          Use the buttons below to inspect ride activity summaries, counts, and range-based statistics.
+          Use the buttons below to show ride summaries, counts, and range-based statistics.
         </p>
       </section>
 
@@ -32,8 +32,15 @@
           <p class="empty-state">No query run yet.</p>
         </div>
       </section>
+
+      <section id="chartPanelSection" class="panel" hidden>
+        <div class="panel-header">
+          <h2>Chart</h2>
+        </div>
+        <div id="chartPanel"></div>
+      </section>
     </main>
 
-    <script src="app.js?v=5"></script>
+    <script src="app.js?v=10"></script>
   </body>
 </html>
