@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s \"http://127.0.0.1:8000/proxy/https://strava-fetcher-production.up.railway.app/activities/earliest-ride-by-bike\")",
+      "Bash(python3 -c ' *)"
+    ]
+  }
+}

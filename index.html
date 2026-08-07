@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Strava Activities Explorer</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero-card">
+        <p class="eyebrow">Jon's Strava UI</p>
+        <h1>Explore your Strava activities</h1>
+        <p class="hero-copy">
+          Use the buttons below to inspect ride activity summaries, counts, and range-based statistics.
+        </p>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Activity queries</h2>
+        </div>
+        <p id="resultSummary" class="summary">Choose a query to run.</p>
+        <div id="queryList" class="query-list"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Results</h2>
+        </div>
+        <div id="resultsPanel" class="response-panel">
+          <p class="empty-state">No query run yet.</p>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js?v=2"></script>
+  </body>
+</html>
