@@ -88,8 +88,7 @@ const DEFAULT_ATTRIBUTES = new Set([
   'totalElevationGain',
   'startDateLocal',
   'sufferScore',
-  'bike',
-  'url'
+  'bike'
 ]);
 
 function escapeHtml(value) {
@@ -243,7 +242,13 @@ function formatSecondsAsHHMM(totalSeconds) {
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 }
 
-function formatCellValue(key, value) {
+function formatCellValue(key, value, row) {
+  const url = row && typeof row.url === 'string' && /^https?:\/\//i.test(row.url) ? row.url : null;
+
+  if (key === 'name' && url) {
+    return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(value)}</a>`;
+  }
+
   if (key === 'url' && typeof value === 'string' && /^https?:\/\//i.test(value)) {
     return `<a href="${escapeHtml(value)}" target="_blank" rel="noopener noreferrer">${escapeHtml(value)}</a>`;
   }
@@ -293,7 +298,7 @@ function renderTable(payload) {
             const arrow = isActive ? (sortState.direction === 'asc' ? ' ▲' : ' ▼') : '';
             return `<th data-sort-key="${escapeHtml(header)}" class="sortable${isActive ? ' sorted' : ''}">${escapeHtml(formatHeaderLabel(header))}${arrow}</th>`;
           }).join('')}</tr></thead>
-          <tbody>${rows.map((row) => `<tr>${headers.map((header) => `<td>${formatCellValue(header, row[header])}</td>`).join('')}</tr>`).join('')}</tbody>
+          <tbody>${rows.map((row) => `<tr>${headers.map((header) => `<td>${formatCellValue(header, row[header], row)}</td>`).join('')}</tr>`).join('')}</tbody>
         </table>
       </div>
     `;
