@@ -55,14 +55,14 @@ const endpoints = [
   },
   {
     title: 'Long rides by bike',
-    description: 'Long ride counts grouped by bike.',
+    description: 'Rides of at least 200km grouped by bike.',
     path: '/activities/long-rides-by-bike',
     inputs: [],
     builder: () => '/activities/long-rides-by-bike'
   },
   {
     title: 'Long rides per year',
-    description: 'Long ride counts grouped by year.',
+    description: 'Rides of at least 200km grouped by year.',
     path: '/activities/long-rides-per-year',
     inputs: [],
     builder: () => '/activities/long-rides-per-year'
