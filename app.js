@@ -85,12 +85,8 @@ const DEFAULT_ATTRIBUTES = new Set([
   'name',
   'distance',
   'movingTime',
-  'elapsedTime',
   'totalElevationGain',
   'startDateLocal',
-  'averageCadence',
-  'averageWatts',
-  'averageHeartrate',
   'sufferScore',
   'bike',
   'url'
