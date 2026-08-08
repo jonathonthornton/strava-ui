@@ -5,7 +5,15 @@
       "Bash(python3 -c ' *)",
       "Bash(node -e ' *)",
       "Bash(curl -s -o /dev/null -w \"odometer: %{http_code}\\\\n\" \"http://127.0.0.1:8000/proxy/https://strava-fetcher-production.up.railway.app/activities/odometer\")",
-      "Bash(node --check /Users/jonthornton/Documents/GitHub/strava-ui/app.js)"
+      "Bash(node --check /Users/jonthornton/Documents/GitHub/strava-ui/app.js)",
+      "Bash(command -v chromium-cli)",
+      "Bash(npx --yes playwright --version)",
+      "Bash(node -e \"require\\('playwright'\\); console.log\\('playwright module resolvable'\\)\")",
+      "Bash(curl -sD - -o /dev/null \"https://strava-fetcher-production.up.railway.app/activities/long-rides\")",
+      "Bash(curl -s \"https://strava-fetcher-production.up.railway.app/activities/long-rides\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(sorted\\(set\\(r.get\\('bike'\\) for r in d\\)\\)\\)\")",
+      "Bash(curl -s \"http://127.0.0.1:8000/proxy/https://strava-fetcher-production.up.railway.app/activities/long-rides\")",
+      "Bash(ps -p 60016 -o pid,lstart,command)"
     ]
   }
 }

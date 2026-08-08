@@ -498,6 +498,8 @@ function hideChartTooltip() {
   if (chartTooltip) chartTooltip.hidden = true;
 }
 
+window.addEventListener('scroll', hideChartTooltip, { passive: true, capture: true });
+
 function wireChartInteractions() {
   chartPanel.querySelectorAll('.chart-bar-group').forEach((group) => {
     const name = group.dataset.name;
@@ -598,7 +600,8 @@ async function runSelectedQuery() {
     const response = await fetch(targetUrl, {
       method: 'GET',
       headers: { Accept: 'application/json' },
-      credentials: 'omit'
+      credentials: 'omit',
+      cache: 'no-store'
     });
 
     const payloadText = await response.text();
