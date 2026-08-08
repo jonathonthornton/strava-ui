@@ -283,31 +283,6 @@ button.secondary {
   outline: none;
 }
 
-.chart-tooltip {
-  position: fixed;
-  z-index: 30;
-  pointer-events: none;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0.45rem 0.65rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  box-shadow: 0 10px 25px var(--shadow);
-}
-
-.chart-tooltip-value {
-  color: var(--text);
-  font-weight: 700;
-  font-size: 0.95rem;
-}
-
-.chart-tooltip-name {
-  color: var(--muted);
-  font-size: 0.8rem;
-}
-
 .query-info {
   margin-bottom: 1rem;
   padding-bottom: 0.9rem;

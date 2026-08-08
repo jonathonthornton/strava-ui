@@ -455,7 +455,7 @@ function renderBarChart(payload, chart) {
     const centerX = barX + barWidth / 2;
 
     return `
-      <g class="chart-bar-group" tabindex="0" role="img" aria-label="${escapeHtml(name)}: ${escapeHtml(roundedValue)}" data-name="${escapeHtml(name)}" data-value="${escapeHtml(roundedValue)}">
+      <g class="chart-bar-group" tabindex="0" role="img" aria-label="${escapeHtml(name)}: ${escapeHtml(roundedValue)}">
         <path class="chart-bar" d="${path}" />
         <text class="chart-value-label" x="${centerX}" y="${barY - 10}" text-anchor="middle">${roundedValue}</text>
         <text class="chart-axis-label" x="${centerX}" y="${baselineY + 18}" text-anchor="middle">${escapeHtml(name)}</text>
@@ -474,54 +474,12 @@ function renderBarChart(payload, chart) {
   `;
 }
 
-let chartTooltip = null;
-
-function ensureChartTooltip() {
-  if (!chartTooltip) {
-    chartTooltip = document.createElement('div');
-    chartTooltip.className = 'chart-tooltip';
-    chartTooltip.hidden = true;
-    document.body.appendChild(chartTooltip);
-  }
-  return chartTooltip;
-}
-
-function showChartTooltip(name, value, clientX, clientY) {
-  const tooltip = ensureChartTooltip();
-  tooltip.innerHTML = `<span class="chart-tooltip-value">${escapeHtml(value)}</span><span class="chart-tooltip-name">${escapeHtml(name)}</span>`;
-  tooltip.hidden = false;
-  tooltip.style.left = `${clientX + 12}px`;
-  tooltip.style.top = `${clientY + 12}px`;
-}
-
-function hideChartTooltip() {
-  if (chartTooltip) chartTooltip.hidden = true;
-}
-
-window.addEventListener('scroll', hideChartTooltip, { passive: true, capture: true });
-
 function wireChartInteractions() {
   chartPanel.querySelectorAll('.chart-bar-group').forEach((group) => {
-    const name = group.dataset.name;
-    const value = group.dataset.value;
-
-    group.addEventListener('pointermove', (event) => {
-      group.classList.add('hovered');
-      showChartTooltip(name, value, event.clientX, event.clientY);
-    });
-    group.addEventListener('pointerleave', () => {
-      group.classList.remove('hovered');
-      hideChartTooltip();
-    });
-    group.addEventListener('focus', () => {
-      group.classList.add('hovered');
-      const rect = group.getBoundingClientRect();
-      showChartTooltip(name, value, rect.left + rect.width / 2, rect.top);
-    });
-    group.addEventListener('blur', () => {
-      group.classList.remove('hovered');
-      hideChartTooltip();
-    });
+    group.addEventListener('pointerenter', () => group.classList.add('hovered'));
+    group.addEventListener('pointerleave', () => group.classList.remove('hovered'));
+    group.addEventListener('focus', () => group.classList.add('hovered'));
+    group.addEventListener('blur', () => group.classList.remove('hovered'));
   });
 }
 
