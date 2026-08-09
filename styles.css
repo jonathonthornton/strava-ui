@@ -94,6 +94,11 @@ input {
   padding: 0.8rem 0.9rem;
 }
 
+input[type="date"] {
+  width: auto;
+  align-self: flex-start;
+}
+
 input:focus {
   outline: 2px solid rgba(255, 181, 107, 0.35);
   border-color: var(--accent);
