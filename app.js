@@ -50,7 +50,6 @@ const endpoints = [
     path: '/activities/odometer',
     inputs: [],
     builder: () => '/activities/odometer',
-    totalRow: true,
     chart: { xKey: 'name', yKey: 'distance', title: 'Total distance by bike', xLabel: 'Bike', yLabel: 'Total distance (km)' }
   },
   {
@@ -269,7 +268,8 @@ function formatSecondsAsHHMM(totalSeconds) {
   const seconds = Math.max(0, Math.round(totalSeconds));
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
-  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  const hoursLabel = hours.toLocaleString('en-US', { minimumIntegerDigits: 2 });
+  return `${hoursLabel}:${String(minutes).padStart(2, '0')}`;
 }
 
 function formatCellValue(key, value, row) {
@@ -307,11 +307,22 @@ function compareValues(a, b) {
   return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
 }
 
+const NON_SUMMABLE_KEYS = new Set(['id', 'year', 'climbPerKm']);
+
+function isSummableKey(key) {
+  if (NON_SUMMABLE_KEYS.has(key)) return false;
+  return !/^(average|max|weightedAverage)/i.test(key);
+}
+
 function renderTotalRow(headers, rows) {
+  const summable = headers.filter((header) => (
+    rows.length > 0 && rows.every((row) => typeof row[header] === 'number') && isSummableKey(header)
+  ));
+  if (!summable.length) return '';
+
   let labeled = false;
   const cells = headers.map((header) => {
-    const allNumeric = rows.length > 0 && rows.every((row) => typeof row[header] === 'number');
-    if (allNumeric) {
+    if (summable.includes(header)) {
       const total = rows.reduce((sum, row) => sum + row[header], 0);
       return `<td>${formatCellValue(header, total)}</td>`;
     }
@@ -343,9 +354,7 @@ function renderTable(payload) {
       })
       : payload;
 
-    const totalRowHtml = lastQueryEndpoint && lastQueryEndpoint.totalRow
-      ? renderTotalRow(headers, payload)
-      : '';
+    const totalRowHtml = renderTotalRow(headers, payload);
 
     return `
       <div class="table-scroll">
