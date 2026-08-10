@@ -174,10 +174,10 @@ function createDialog() {
   dialog.innerHTML = `
     <div class="dialog-header">
       <h3 id="dialogTitle">Query parameters</h3>
-      <button type="button" class="secondary" id="closeDialogBtn">Close</button>
     </div>
     <div id="dialogBody" class="dialog-body"></div>
     <div class="dialog-actions">
+      <button type="button" class="secondary" id="closeDialogBtn">Close</button>
       <button type="button" class="primary" id="runQueryBtn">Run query</button>
     </div>
   `;
