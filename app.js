@@ -19,7 +19,8 @@ const endpoints = [
     path: '/activities/recent/{limit}',
     inputs: [{ name: 'limit', label: 'Limit', placeholder: '10' }],
     builder: ({ limit }) => `/activities/recent/${encodeURIComponent(limit || '10')}`,
-    curated: true
+    curated: true,
+    group: 'Ride details'
   },
   {
     title: 'Rides by bike since date',
@@ -27,7 +28,8 @@ const endpoints = [
     path: '/activities/rides-by-bike?sinceDate={sinceDate}',
     inputs: [{ name: 'sinceDate', label: 'Since date', type: 'date', placeholder: `${new Date().getFullYear()}-01-01` }],
     builder: ({ sinceDate }) => `/activities/rides-by-bike?sinceDate=${encodeURIComponent(sinceDate || `${new Date().getFullYear()}-01-01`)}`,
-    chart: { xKey: 'name', yKey: 'distance', title: 'Total distance by bike', xLabel: 'Bike', yLabel: 'Total distance (km)' }
+    chart: { xKey: 'name', yKey: 'distance', title: 'Total distance by bike', xLabel: 'Bike', yLabel: 'Total distance (km)' },
+    group: 'By bike'
   },
   {
     title: 'Distance range counts',
@@ -35,14 +37,16 @@ const endpoints = [
     path: '/activities/distance-range-counts',
     inputs: [],
     builder: () => '/activities/distance-range-counts',
-    columnOrder: ['distanceRange', 'rideCount']
+    columnOrder: ['distanceRange', 'rideCount'],
+    group: 'Stats & summaries'
   },
   {
     title: 'Earliest ride by bike',
     description: 'The earliest ride for each bike.',
     path: '/activities/earliest-ride-by-bike',
     inputs: [],
-    builder: () => '/activities/earliest-ride-by-bike'
+    builder: () => '/activities/earliest-ride-by-bike',
+    group: 'By bike'
   },
   {
     title: 'Bike Odometer',
@@ -50,28 +54,32 @@ const endpoints = [
     path: '/activities/odometer',
     inputs: [],
     builder: () => '/activities/odometer',
-    chart: { xKey: 'name', yKey: 'distance', title: 'Total distance by bike', xLabel: 'Bike', yLabel: 'Total distance (km)' }
+    chart: { xKey: 'name', yKey: 'distance', title: 'Total distance by bike', xLabel: 'Bike', yLabel: 'Total distance (km)' },
+    group: 'By bike'
   },
   {
     title: 'Long rides by bike',
     description: 'Rides of at least 200km grouped by bike.',
     path: '/activities/long-rides-by-bike',
     inputs: [],
-    builder: () => '/activities/long-rides-by-bike'
+    builder: () => '/activities/long-rides-by-bike',
+    group: 'By bike'
   },
   {
     title: 'Long rides per year',
     description: 'Rides of at least 200km grouped by year.',
     path: '/activities/long-rides-per-year',
     inputs: [],
-    builder: () => '/activities/long-rides-per-year'
+    builder: () => '/activities/long-rides-per-year',
+    group: 'Stats & summaries'
   },
   {
     title: 'Eddington number',
     description: 'Greatest ride count/distance combination.',
     path: '/activities/eddington-number',
     inputs: [],
-    builder: () => '/activities/eddington-number'
+    builder: () => '/activities/eddington-number',
+    group: 'Stats & summaries'
   },
   {
     title: 'Long rides',
@@ -79,9 +87,12 @@ const endpoints = [
     path: '/activities/long-rides',
     inputs: [],
     builder: () => '/activities/long-rides',
-    curated: true
+    curated: true,
+    group: 'Ride details'
   }
 ];
+
+const QUERY_GROUP_ORDER = ['Ride details', 'By bike', 'Stats & summaries'];
 
 let selectedEndpoint = null;
 let lastPayload = null;
@@ -133,25 +144,50 @@ function renderQueryList() {
   queryList.innerHTML = '';
   const fragment = document.createDocumentFragment();
 
-  endpoints.forEach((endpoint) => {
-    const item = document.createElement('button');
-    item.className = 'query-item';
-    item.type = 'button';
-    item.innerHTML = `
-      <div>
+  QUERY_GROUP_ORDER.forEach((groupName, index) => {
+    const groupEndpoints = endpoints.filter((endpoint) => endpoint.group === groupName);
+    if (!groupEndpoints.length) return;
+
+    const details = document.createElement('details');
+    details.className = 'query-group';
+    details.name = 'query-group';
+    if (index === 0) details.open = true;
+
+    const summary = document.createElement('summary');
+    summary.innerHTML = `
+      <span class="chevron" aria-hidden="true">&#9656;</span>
+      <span>${escapeHtml(groupName)}</span>
+      <span class="group-count">${groupEndpoints.length}</span>
+    `;
+    details.appendChild(summary);
+
+    const itemsWrap = document.createElement('div');
+    itemsWrap.className = 'group-items';
+
+    groupEndpoints.forEach((endpoint) => {
+      const item = document.createElement('button');
+      item.className = 'query-item';
+      item.type = 'button';
+      item.setAttribute('aria-pressed', 'false');
+      item.innerHTML = `
         <h3>${escapeHtml(endpoint.title)}</h3>
         <p>${escapeHtml(endpoint.description)}</p>
-      </div>
-    `;
-    item.addEventListener('click', () => {
-      if (endpoint.inputs.length) {
-        openDialog(endpoint);
-      } else {
-        selectedEndpoint = endpoint;
-        runSelectedQuery();
-      }
+      `;
+      item.addEventListener('click', () => {
+        queryList.querySelectorAll('.query-item[aria-pressed="true"]').forEach((el) => el.setAttribute('aria-pressed', 'false'));
+        item.setAttribute('aria-pressed', 'true');
+        if (endpoint.inputs.length) {
+          openDialog(endpoint);
+        } else {
+          selectedEndpoint = endpoint;
+          runSelectedQuery();
+        }
+      });
+      itemsWrap.appendChild(item);
     });
-    fragment.appendChild(item);
+
+    details.appendChild(itemsWrap);
+    fragment.appendChild(details);
   });
 
   queryList.appendChild(fragment);
