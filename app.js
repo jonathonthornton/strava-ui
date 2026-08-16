@@ -37,7 +37,7 @@ const endpoints = [
     path: '/activities/rides-by-bike?sinceDate={sinceDate}',
     inputs: [{ name: 'sinceDate', label: 'Since date', type: 'date', placeholder: `${new Date().getFullYear()}-01-01` }],
     builder: ({ sinceDate }) => `/activities/rides-by-bike?sinceDate=${encodeURIComponent(sinceDate || `${new Date().getFullYear()}-01-01`)}`,
-    chart: { xKey: 'name', yKey: 'distance', title: 'Total distance by bike', xLabel: 'Bike', yLabel: 'Total distance (km)' },
+    chart: { xKey: 'name', yKey: 'distance', title: ({ sinceDate }) => `Distances since ${sinceDate || `${new Date().getFullYear()}-01-01`}`, xLabel: 'Bike', yLabel: 'Total distance (km)' },
     group: 'By bike'
   },
   {
@@ -54,7 +54,7 @@ const endpoints = [
     path: '/activities/odometer',
     inputs: [],
     builder: () => '/activities/odometer',
-    chart: { xKey: 'name', yKey: 'distance', title: 'Total distance by bike', xLabel: 'Bike', yLabel: 'Total distance (km)' },
+    chart: { xKey: 'name', yKey: 'distance', title: 'Total distance per bike', xLabel: 'Bike', yLabel: 'Total distance (km)' },
     group: 'By bike'
   },
   {
@@ -569,7 +569,10 @@ function renderResults() {
 
   const hasChart = lastQueryEndpoint && lastQueryEndpoint.chart && Array.isArray(lastPayload) && lastPayload.length;
   chartPanelSection.hidden = !hasChart;
-  chartPanel.innerHTML = hasChart ? renderBarChart(lastPayload, lastQueryEndpoint.chart) : '';
+  const chartConfig = hasChart
+    ? { ...lastQueryEndpoint.chart, title: typeof lastQueryEndpoint.chart.title === 'function' ? lastQueryEndpoint.chart.title(lastQueryValues) : lastQueryEndpoint.chart.title }
+    : null;
+  chartPanel.innerHTML = hasChart ? renderBarChart(lastPayload, chartConfig) : '';
 
   if (hasChart) {
     wireChartInteractions();
