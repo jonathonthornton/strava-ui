@@ -23,12 +23,46 @@ const endpoints = [
     group: 'Ride details'
   },
   {
-    title: 'Rides by bike since date',
-    description: 'Summary of rides grouped by bike since a date.',
+    title: 'Long rides',
+    description: 'Long ride details.',
+    path: '/activities/long-rides',
+    inputs: [],
+    builder: () => '/activities/long-rides',
+    curated: true,
+    group: 'Ride details'
+  },
+  {
+    title: 'Summary since date',
+    description: 'Summary of rides since a date grouped by bike.',
     path: '/activities/rides-by-bike?sinceDate={sinceDate}',
     inputs: [{ name: 'sinceDate', label: 'Since date', type: 'date', placeholder: `${new Date().getFullYear()}-01-01` }],
     builder: ({ sinceDate }) => `/activities/rides-by-bike?sinceDate=${encodeURIComponent(sinceDate || `${new Date().getFullYear()}-01-01`)}`,
     chart: { xKey: 'name', yKey: 'distance', title: 'Total distance by bike', xLabel: 'Bike', yLabel: 'Total distance (km)' },
+    group: 'By bike'
+  },
+  {
+    title: 'Age',
+    description: 'Bike age details grouped by bike.',
+    path: '/activities/earliest-ride-by-bike',
+    inputs: [],
+    builder: () => '/activities/earliest-ride-by-bike',
+    group: 'By bike'
+  },
+  {
+    title: 'Odometer',
+    description: 'Total distance per bike.',
+    path: '/activities/odometer',
+    inputs: [],
+    builder: () => '/activities/odometer',
+    chart: { xKey: 'name', yKey: 'distance', title: 'Total distance by bike', xLabel: 'Bike', yLabel: 'Total distance (km)' },
+    group: 'By bike'
+  },
+  {
+    title: 'Long ride counts',
+    description: 'Rides of at least 200km grouped by bike.',
+    path: '/activities/long-rides-by-bike',
+    inputs: [],
+    builder: () => '/activities/long-rides-by-bike',
     group: 'By bike'
   },
   {
@@ -39,31 +73,6 @@ const endpoints = [
     builder: () => '/activities/distance-range-counts',
     columnOrder: ['distanceRange', 'rideCount'],
     group: 'Stats & summaries'
-  },
-  {
-    title: 'Earliest ride by bike',
-    description: 'The earliest ride for each bike.',
-    path: '/activities/earliest-ride-by-bike',
-    inputs: [],
-    builder: () => '/activities/earliest-ride-by-bike',
-    group: 'By bike'
-  },
-  {
-    title: 'Bike Odometer',
-    description: 'Total distance per bike.',
-    path: '/activities/odometer',
-    inputs: [],
-    builder: () => '/activities/odometer',
-    chart: { xKey: 'name', yKey: 'distance', title: 'Total distance by bike', xLabel: 'Bike', yLabel: 'Total distance (km)' },
-    group: 'By bike'
-  },
-  {
-    title: 'Long rides by bike',
-    description: 'Rides of at least 200km grouped by bike.',
-    path: '/activities/long-rides-by-bike',
-    inputs: [],
-    builder: () => '/activities/long-rides-by-bike',
-    group: 'By bike'
   },
   {
     title: 'Long rides per year',
@@ -81,15 +90,7 @@ const endpoints = [
     builder: () => '/activities/eddington-number',
     group: 'Stats & summaries'
   },
-  {
-    title: 'Long rides',
-    description: 'Long ride details.',
-    path: '/activities/long-rides',
-    inputs: [],
-    builder: () => '/activities/long-rides',
-    curated: true,
-    group: 'Ride details'
-  }
+
 ];
 
 const QUERY_GROUP_ORDER = ['Ride details', 'By bike', 'Stats & summaries'];
