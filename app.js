@@ -37,7 +37,7 @@ const endpoints = [
     path: '/activities/rides-by-bike?sinceDate={sinceDate}',
     inputs: [{ name: 'sinceDate', label: 'Since date', type: 'date', placeholder: `${new Date().getFullYear()}-01-01` }],
     builder: ({ sinceDate }) => `/activities/rides-by-bike?sinceDate=${encodeURIComponent(sinceDate || `${new Date().getFullYear()}-01-01`)}`,
-    chart: { xKey: 'name', yKey: 'distance', title: ({ sinceDate }) => `Distances since ${sinceDate || `${new Date().getFullYear()}-01-01`}`, xLabel: 'Bike', yLabel: 'Total distance (km)' },
+    chart: { xKey: 'name', yKey: 'distance', title: ({ sinceDate }) => `Ride distances since ${formatDateDDMMYYYY(sinceDate) || formatDateDDMMYYYY(`${new Date().getFullYear()}-01-01`)}.`, xLabel: 'Bike', yLabel: 'Total distance (km)' },
     group: 'By bike'
   },
   {
@@ -54,7 +54,7 @@ const endpoints = [
     path: '/activities/odometer',
     inputs: [],
     builder: () => '/activities/odometer',
-    chart: { xKey: 'name', yKey: 'distance', title: 'Total distance per bike', xLabel: 'Bike', yLabel: 'Total distance (km)' },
+    chart: { xKey: 'name', yKey: 'distance', title: 'Total distance per bike.', xLabel: 'Bike', yLabel: 'Total distance (km)' },
     group: 'By bike'
   },
   {
@@ -309,6 +309,16 @@ function formatSecondsAsHHMM(totalSeconds) {
   return `${hoursLabel}:${String(minutes).padStart(2, '0')}`;
 }
 
+const ISO_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?/;
+
+function formatDateDDMMYYYY(value) {
+  const match = typeof value === 'string' ? ISO_DATE_RE.exec(value) : null;
+  if (!match) return null;
+  const [, year, month, day, hours, minutes] = match;
+  const datePart = `${day}-${month}-${year}`;
+  return hours ? `${datePart} ${hours}:${minutes}` : datePart;
+}
+
 function formatCellValue(key, value, row) {
   const url = row && typeof row.url === 'string' && /^https?:\/\//i.test(row.url) ? row.url : null;
 
@@ -331,6 +341,11 @@ function formatCellValue(key, value, row) {
       return escapeHtml(Math.round(value));
     }
     return escapeHtml(Math.round(value).toLocaleString());
+  }
+
+  if (typeof value === 'string') {
+    const formattedDate = formatDateDDMMYYYY(value);
+    if (formattedDate) return escapeHtml(formattedDate);
   }
 
   return escapeHtml(value && typeof value === 'object' ? JSON.stringify(value) : value);
@@ -535,7 +550,9 @@ function renderQueryInfo(endpoint, values) {
   const paramsHtml = endpoint.inputs.length
     ? `<ul class="query-params">${endpoint.inputs.map((input) => {
       const rawValue = values[input.name];
-      const display = rawValue ? rawValue : `${input.placeholder || 'default'} (default)`;
+      const display = rawValue
+        ? (formatDateDDMMYYYY(rawValue) || rawValue)
+        : `${formatDateDDMMYYYY(input.placeholder) || input.placeholder || 'default'} (default)`;
       return `<li><strong>${escapeHtml(input.label)}:</strong> ${escapeHtml(display)}</li>`;
     }).join('')}</ul>`
     : '';
