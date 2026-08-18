@@ -26,7 +26,7 @@ const endpoints = [
     title: 'Fast rides',
     description: 'Fast ride details with a count limit.',
     path: '/activities/fast-rides/{limit}',
-    inputs: [{ name: 'limit', label: 'Limit', placeholder: '20' }],
+    inputs: [{ name: 'limit', label: 'Limit', placeholder: '10' }],
     builder: ({ limit }) => `/activities/fast-rides/${encodeURIComponent(limit || '10')}`,
     curated: true,
     group: 'Ride details'
