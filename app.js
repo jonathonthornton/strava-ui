@@ -320,6 +320,7 @@ function formatSecondsAsHHMM(totalSeconds) {
 }
 
 const ISO_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?/;
+const DMY_DATE_RE = /^(\d{2})\/(\d{2})\/(\d{4})(?: (\d{2}):(\d{2}))?$/;
 
 function formatDateDDMMYYYY(value) {
   const match = typeof value === 'string' ? ISO_DATE_RE.exec(value) : null;
@@ -327,6 +328,24 @@ function formatDateDDMMYYYY(value) {
   const [, year, month, day, hours, minutes] = match;
   const datePart = `${day}-${month}-${year}`;
   return hours ? `${datePart} ${hours}:${minutes}` : datePart;
+}
+
+function parseSortableDate(value) {
+  if (typeof value !== 'string') return null;
+
+  const isoMatch = ISO_DATE_RE.exec(value);
+  if (isoMatch) {
+    const [, year, month, day, hours = '0', minutes = '0', seconds = '0'] = isoMatch;
+    return Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes), Number(seconds));
+  }
+
+  const dmyMatch = DMY_DATE_RE.exec(value);
+  if (dmyMatch) {
+    const [, day, month, year, hours = '0', minutes = '0'] = dmyMatch;
+    return Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes));
+  }
+
+  return null;
 }
 
 function formatCellValue(key, value, row) {
@@ -366,6 +385,11 @@ function compareValues(a, b) {
   if (a == null) return -1;
   if (b == null) return 1;
   if (typeof a === 'number' && typeof b === 'number') return a - b;
+
+  const dateA = parseSortableDate(a);
+  const dateB = parseSortableDate(b);
+  if (dateA !== null && dateB !== null) return dateA - dateB;
+
   return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
 }
 
