@@ -32,6 +32,15 @@ const endpoints = [
     group: 'Ride details'
   },
   {
+    title: 'Fast rides',
+    description: 'Fast ride details.',
+    path: '/activities/fast-rides',
+    inputs: [],
+    builder: () => '/activities/fast-rides',
+    curated: true,
+    group: 'Ride details'
+  },
+  {
     title: 'Summary since date',
     description: 'Summary of rides since a date grouped by bike.',
     path: '/activities/rides-by-bike?sinceDate={sinceDate}',
@@ -107,6 +116,7 @@ const DEFAULT_ATTRIBUTES = new Set([
   'name',
   'distance',
   'movingTime',
+  'averageSpeed',
   'totalElevationGain',
   'climbPerKm',
   'startDateLocal',
