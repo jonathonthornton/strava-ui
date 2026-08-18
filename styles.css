@@ -7,6 +7,7 @@
   --muted: #9eb2c6;
   --accent: #ffb56b;
   --accent-strong: #ff8f3f;
+  --series-2: #5fb4ff;
   --shadow: rgba(0, 0, 0, 0.35);
 }
 
@@ -314,6 +315,10 @@ button.secondary {
   font-size: 11px;
 }
 
+.chart-axis-label-right {
+  fill: var(--series-2);
+}
+
 .chart-value-label {
   fill: var(--text);
   font-size: 12px;
@@ -323,7 +328,11 @@ button.secondary {
 
 .chart-bar {
   fill: var(--accent);
-  transition: fill 0.15s ease;
+  transition: filter 0.15s ease;
+}
+
+.chart-series-1 .chart-bar {
+  fill: var(--series-2);
 }
 
 .chart-bar-group {
@@ -332,17 +341,44 @@ button.secondary {
 
 .chart-bar-group:hover .chart-bar,
 .chart-bar-group.hovered .chart-bar {
-  fill: var(--accent-strong);
+  filter: brightness(1.15);
 }
 
 .chart-bar-group:focus-visible .chart-bar {
-  fill: var(--accent-strong);
+  filter: brightness(1.15);
   stroke: var(--text);
   stroke-width: 2;
 }
 
 .chart-bar-group:focus {
   outline: none;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  margin: -0.25rem 0 0.75rem;
+}
+
+.chart-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.chart-legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  display: inline-block;
+  background: var(--accent);
+}
+
+.chart-legend-swatch.chart-series-1 {
+  background: var(--series-2);
 }
 
 .query-info {

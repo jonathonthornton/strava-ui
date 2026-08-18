@@ -41,16 +41,24 @@ const endpoints = [
     group: 'Ride details'
   },
   {
-    title: 'Summary since date',
-    description: 'Summary of rides since a date grouped by bike.',
+    title: 'Rides since date',
+    description: 'Distances and ride counts since a date grouped by bike.',
     path: '/activities/rides-by-bike?sinceDate={sinceDate}',
     inputs: [{ name: 'sinceDate', label: 'Since date', type: 'date', placeholder: `${new Date().getFullYear()}-01-01` }],
     builder: ({ sinceDate }) => `/activities/rides-by-bike?sinceDate=${encodeURIComponent(sinceDate || `${new Date().getFullYear()}-01-01`)}`,
-    chart: { xKey: 'name', yKey: 'distance', title: ({ sinceDate }) => `Ride distances since ${formatDateDDMMYYYY(sinceDate) || formatDateDDMMYYYY(`${new Date().getFullYear()}-01-01`)}.`, xLabel: 'Bike', yLabel: 'Total distance (km)' },
+    chart: {
+      xKey: 'name',
+      series: [
+        { key: 'distance', label: 'Distance (km)' },
+        { key: 'rides', label: 'Rides', axis: 'right' }
+      ],
+      title: ({ sinceDate }) => `Rides since ${formatDateDDMMYYYY(sinceDate) || formatDateDDMMYYYY(`${new Date().getFullYear()}-01-01`)} by bike.`,
+      xLabel: 'Bike'
+    },
     group: 'By bike'
   },
   {
-    title: 'Age',
+    title: 'Bike age',
     description: 'Bike age details grouped by bike.',
     path: '/activities/earliest-ride-by-bike',
     inputs: [],
@@ -58,7 +66,7 @@ const endpoints = [
     group: 'By bike'
   },
   {
-    title: 'Odometer',
+    title: 'Bike odometer',
     description: 'Total distance per bike.',
     path: '/activities/odometer',
     inputs: [],
@@ -75,8 +83,8 @@ const endpoints = [
     group: 'By bike'
   },
   {
-    title: 'Distance range counts',
-    description: 'Ride counts within distance buckets.',
+    title: 'Ride counts by distance',
+    description: 'Ride counts per distance range.',
     path: '/activities/distance-range-counts',
     inputs: [],
     builder: () => '/activities/distance-range-counts',
@@ -84,7 +92,7 @@ const endpoints = [
     group: 'Stats & summaries'
   },
   {
-    title: 'Long rides per year',
+    title: 'Long ride counts per year',
     description: 'Rides of at least 200km grouped by year.',
     path: '/activities/long-rides-per-year',
     inputs: [],
@@ -507,60 +515,97 @@ function computeNiceTicks(maxValue, tickCount = 5) {
 }
 
 function renderBarChart(payload, chart) {
+  const series = chart.series || [{ key: chart.yKey, label: chart.yLabel }];
+
   const rows = payload
-    .filter((row) => row && typeof row[chart.yKey] === 'number')
-    .sort((a, b) => b[chart.yKey] - a[chart.yKey]);
+    .filter((row) => row && series.every((s) => typeof row[s.key] === 'number'))
+    .sort((a, b) => b[series[0].key] - a[series[0].key]);
   if (!rows.length) return '';
+
+  const hasRightAxis = series.some((s) => s.axis === 'right');
 
   const width = 680;
   const height = 320;
-  const margin = { top: 32, right: 16, bottom: 40, left: 60 };
+  const margin = { top: 32, right: hasRightAxis ? 46 : 16, bottom: 40, left: 60 };
   const plotWidth = width - margin.left - margin.right;
   const plotHeight = height - margin.top - margin.bottom;
   const baselineY = margin.top + plotHeight;
 
-  const maxValue = Math.max(...rows.map((row) => row[chart.yKey]));
-  const { max: niceMax, ticks } = computeNiceTicks(maxValue);
-  const yFor = (value) => margin.top + plotHeight - (value / niceMax) * plotHeight;
+  const leftSeries = series.filter((s) => s.axis !== 'right');
+  const rightSeries = series.filter((s) => s.axis === 'right');
 
-  const gridlines = ticks.map((tick) => {
+  const leftMaxValue = Math.max(0, ...rows.flatMap((row) => leftSeries.map((s) => row[s.key])));
+  const { max: leftNiceMax, ticks: leftTicks } = computeNiceTicks(leftMaxValue);
+  const yFor = (value) => margin.top + plotHeight - (value / leftNiceMax) * plotHeight;
+
+  const rightMaxValue = hasRightAxis ? Math.max(0, ...rows.flatMap((row) => rightSeries.map((s) => row[s.key]))) : 0;
+  const { max: rightNiceMax } = computeNiceTicks(rightMaxValue);
+  const yForRight = (value) => margin.top + plotHeight - (value / rightNiceMax) * plotHeight;
+
+  const yForSeries = (value, s) => (s.axis === 'right' ? yForRight(value) : yFor(value));
+
+  const gridlines = leftTicks.map((tick) => {
     const y = yFor(tick);
+    const rightLabel = hasRightAxis
+      ? `<text class="chart-axis-label chart-axis-label-right" x="${margin.left + plotWidth + 10}" y="${y}" text-anchor="start" dominant-baseline="middle">${Math.round((tick / leftNiceMax) * rightNiceMax).toLocaleString()}</text>`
+      : '';
     return `
       <line class="chart-gridline" x1="${margin.left}" x2="${margin.left + plotWidth}" y1="${y}" y2="${y}" />
       <text class="chart-axis-label" x="${margin.left - 10}" y="${y}" text-anchor="end" dominant-baseline="middle">${Math.round(tick).toLocaleString()}</text>
+      ${rightLabel}
     `;
   }).join('');
 
   const bandWidth = plotWidth / rows.length;
-  const barWidth = Math.min(24, bandWidth * 0.6);
+  const groupWidth = Math.min(series.length * 28, bandWidth * 0.7);
+  const barGap = 4;
+  const barWidth = (groupWidth - barGap * (series.length - 1)) / series.length;
 
   const bars = rows.map((row, index) => {
-    const value = row[chart.yKey];
     const name = String(row[chart.xKey]);
-    const roundedValue = Math.round(value).toLocaleString();
-    const barX = margin.left + index * bandWidth + (bandWidth - barWidth) / 2;
-    const barY = yFor(value);
-    const barHeight = baselineY - barY;
-    const radius = Math.max(0, Math.min(4, barWidth / 2, barHeight));
+    const groupX = margin.left + index * bandWidth + (bandWidth - groupWidth) / 2;
 
-    const path = barHeight <= radius
-      ? `M${barX},${baselineY} L${barX},${barY} L${barX + barWidth},${barY} L${barX + barWidth},${baselineY} Z`
-      : `M${barX},${baselineY} L${barX},${barY + radius} Q${barX},${barY} ${barX + radius},${barY} L${barX + barWidth - radius},${barY} Q${barX + barWidth},${barY} ${barX + barWidth},${barY + radius} L${barX + barWidth},${baselineY} Z`;
+    const seriesBars = series.map((s, sIndex) => {
+      const value = row[s.key];
+      const roundedValue = Math.round(value).toLocaleString();
+      const barX = groupX + sIndex * (barWidth + barGap);
+      const barY = yForSeries(value, s);
+      const barHeight = baselineY - barY;
+      const radius = Math.max(0, Math.min(4, barWidth / 2, barHeight));
 
-    const centerX = barX + barWidth / 2;
+      const path = barHeight <= radius
+        ? `M${barX},${baselineY} L${barX},${barY} L${barX + barWidth},${barY} L${barX + barWidth},${baselineY} Z`
+        : `M${barX},${baselineY} L${barX},${barY + radius} Q${barX},${barY} ${barX + radius},${barY} L${barX + barWidth - radius},${barY} Q${barX + barWidth},${barY} ${barX + barWidth},${barY + radius} L${barX + barWidth},${baselineY} Z`;
+
+      const centerX = barX + barWidth / 2;
+      const label = s.label || s.key;
+
+      return `
+        <g class="chart-bar-group chart-series-${sIndex}" tabindex="0" role="img" aria-label="${escapeHtml(name)} ${escapeHtml(label)}: ${escapeHtml(roundedValue)}">
+          <path class="chart-bar" d="${path}" />
+          <text class="chart-value-label" x="${centerX}" y="${barY - 10}" text-anchor="middle">${roundedValue}</text>
+        </g>
+      `;
+    }).join('');
+
+    const labelCenterX = groupX + groupWidth / 2;
 
     return `
-      <g class="chart-bar-group" tabindex="0" role="img" aria-label="${escapeHtml(name)}: ${escapeHtml(roundedValue)}">
-        <path class="chart-bar" d="${path}" />
-        <text class="chart-value-label" x="${centerX}" y="${barY - 10}" text-anchor="middle">${roundedValue}</text>
-        <text class="chart-axis-label" x="${centerX}" y="${baselineY + 18}" text-anchor="middle">${escapeHtml(name)}</text>
-      </g>
+      ${seriesBars}
+      <text class="chart-axis-label" x="${labelCenterX}" y="${baselineY + 18}" text-anchor="middle">${escapeHtml(name)}</text>
     `;
   }).join('');
+
+  const legend = series.length > 1
+    ? `<div class="chart-legend">${series.map((s, sIndex) => `
+        <span class="chart-legend-item"><span class="chart-legend-swatch chart-series-${sIndex}"></span>${escapeHtml(s.label || s.key)}</span>
+      `).join('')}</div>`
+    : '';
 
   return `
     <div class="chart-container">
       <p class="chart-title">${escapeHtml(chart.title || '')}</p>
+      ${legend}
       <svg class="bar-chart" viewBox="0 0 ${width} ${height}" role="group" aria-label="${escapeHtml(chart.title || '')}">
         ${gridlines}
         ${bars}
