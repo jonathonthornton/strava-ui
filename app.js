@@ -23,20 +23,20 @@ const endpoints = [
     group: 'Ride details'
   },
   {
+    title: 'Fast rides',
+    description: 'Fast ride details with a count limit.',
+    path: '/activities/fast-rides/{limit}',
+    inputs: [{ name: 'limit', label: 'Limit', placeholder: '20' }],
+    builder: ({ limit }) => `/activities/fast-rides/${encodeURIComponent(limit || '20')}`,
+    curated: true,
+    group: 'Ride details'
+  },
+  {
     title: 'Long rides',
     description: 'Long ride details.',
     path: '/activities/long-rides',
     inputs: [],
     builder: () => '/activities/long-rides',
-    curated: true,
-    group: 'Ride details'
-  },
-  {
-    title: 'Fast rides',
-    description: 'Fast ride details.',
-    path: '/activities/fast-rides',
-    inputs: [],
-    builder: () => '/activities/fast-rides',
     curated: true,
     group: 'Ride details'
   },
