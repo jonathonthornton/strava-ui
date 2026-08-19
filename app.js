@@ -14,6 +14,7 @@ let runQueryBtn = null;
 
 let mapDialog = null;
 let mapDialogBody = null;
+let mapDialogTitleEl = null;
 let closeMapDialogBtn = null;
 let rideMap = null;
 
@@ -370,6 +371,7 @@ function createMapDialog() {
 
   mapDialog = backdrop;
   mapDialogBody = dialog.querySelector('#mapDialogBody');
+  mapDialogTitleEl = dialog.querySelector('#mapDialogTitle');
   closeMapDialogBtn = dialog.querySelector('#closeMapDialogBtn');
 
   closeMapDialogBtn.addEventListener('click', closeMapDialog);
@@ -389,8 +391,9 @@ function closeMapDialog() {
   }
 }
 
-async function showRideMap(rideId) {
+async function showRideMap(rideId, rideName) {
   createMapDialog();
+  mapDialogTitleEl.textContent = rideName || 'Ride map';
   mapDialogBody.innerHTML = '<p class="map-dialog-message">Loading map…</p>';
   mapDialog.hidden = false;
   mapDialog.style.display = 'grid';
@@ -580,7 +583,7 @@ function renderTotalRow(headers, rows, showMapColumn) {
     return '<td></td>';
   }).join('');
 
-  return `<tfoot><tr class="total-row">${cells}${showMapColumn ? '<td></td>' : ''}</tr></tfoot>`;
+  return `<tfoot><tr class="total-row">${showMapColumn ? '<td></td>' : ''}${cells}</tr></tfoot>`;
 }
 
 function renderTable(payload) {
@@ -608,16 +611,16 @@ function renderTable(payload) {
     return `
       <div class="table-scroll">
         <table>
-          <thead><tr>${headers.map((header) => {
+          <thead><tr>${showMapColumn ? '<th>Map</th>' : ''}${headers.map((header) => {
       const isActive = sortState.key === header;
       const arrow = isActive ? (sortState.direction === 'asc' ? ' ▲' : ' ▼') : '';
       return `<th data-sort-key="${escapeHtml(header)}" class="sortable${isActive ? ' sorted' : ''}">${escapeHtml(formatHeaderLabel(header))}${arrow}</th>`;
-    }).join('')}${showMapColumn ? '<th></th>' : ''}</tr></thead>
+    }).join('')}</tr></thead>
           <tbody>${rows.map((row) => {
       const mapCell = showMapColumn
-        ? `<td>${row && row.id != null ? `<button type="button" class="map-btn" data-ride-id="${escapeHtml(row.id)}">Map</button>` : ''}</td>`
+        ? `<td>${row && row.id != null ? `<button type="button" class="map-btn" data-ride-id="${escapeHtml(row.id)}" data-ride-name="${escapeHtml(row.name)}">Map</button>` : ''}</td>`
         : '';
-      return `<tr>${headers.map((header) => `<td>${formatCellValue(header, row[header], row)}</td>`).join('')}${mapCell}</tr>`;
+      return `<tr>${mapCell}${headers.map((header) => `<td>${formatCellValue(header, row[header], row)}</td>`).join('')}</tr>`;
     }).join('')}</tbody>
           ${totalRowHtml}
         </table>
@@ -825,7 +828,7 @@ function renderResults() {
 
   resultsPanel.querySelectorAll('.map-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
-      showRideMap(btn.dataset.rideId);
+      showRideMap(btn.dataset.rideId, btn.dataset.rideName);
     });
   });
 
