@@ -459,6 +459,36 @@ button.secondary {
   margin-top: 0.9rem;
 }
 
+.map-btn {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.map-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.map-dialog .dialog {
+  width: min(720px, 100%);
+}
+
+.map-dialog-body {
+  height: 420px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.map-dialog-message {
+  color: var(--muted);
+  margin: 0;
+}
+
 @media (max-width: 680px) {
   .app-shell {
     width: min(100% - 1rem, 100%);

@@ -12,6 +12,11 @@ let dialogBody = null;
 let closeDialogBtn = null;
 let runQueryBtn = null;
 
+let mapDialog = null;
+let mapDialogBody = null;
+let closeMapDialogBtn = null;
+let rideMap = null;
+
 const endpoints = [
   {
     title: 'Recent rides',
@@ -150,6 +155,64 @@ function withComputedFields(payload) {
   });
 }
 
+function buildApiRequestUrl(path) {
+  const fullTargetUrl = `${apiBaseUrl}${path}`;
+  const sameOriginAsApi = window.location.origin === apiBaseUrl;
+  return sameOriginAsApi ? fullTargetUrl : `${proxyBaseUrl}${fullTargetUrl}`;
+}
+
+async function fetchApiJson(path) {
+  const response = await fetch(buildApiRequestUrl(path), {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+    credentials: 'omit',
+    cache: 'no-store'
+  });
+
+  const payloadText = await response.text();
+  let payload;
+  try {
+    payload = JSON.parse(payloadText);
+  } catch (error) {
+    payload = payloadText;
+  }
+
+  return { response, payload };
+}
+
+function decodePolyline(encoded) {
+  const coords = [];
+  let index = 0;
+  let lat = 0;
+  let lng = 0;
+
+  while (index < encoded.length) {
+    let result = 0;
+    let shift = 0;
+    let byte;
+
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+    lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+
+    result = 0;
+    shift = 0;
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+    lng += (result & 1) ? ~(result >> 1) : (result >> 1);
+
+    coords.push([lat / 1e5, lng / 1e5]);
+  }
+
+  return coords;
+}
+
 function escapeHtml(value) {
   return String(value ?? '')
     .replace(/&/g, '&amp;')
@@ -275,6 +338,96 @@ function closeDialog() {
   if (queryDialog) {
     queryDialog.hidden = true;
     queryDialog.style.display = 'none';
+  }
+}
+
+function createMapDialog() {
+  if (mapDialog) return;
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'dialog-backdrop map-dialog';
+  backdrop.hidden = true;
+  backdrop.style.display = 'none';
+
+  const dialog = document.createElement('div');
+  dialog.className = 'dialog';
+  dialog.setAttribute('role', 'dialog');
+  dialog.setAttribute('aria-modal', 'true');
+  dialog.setAttribute('aria-labelledby', 'mapDialogTitle');
+
+  dialog.innerHTML = `
+    <div class="dialog-header">
+      <h3 id="mapDialogTitle">Ride map</h3>
+    </div>
+    <div id="mapDialogBody" class="map-dialog-body"></div>
+    <div class="dialog-actions">
+      <button type="button" class="secondary" id="closeMapDialogBtn">Close</button>
+    </div>
+  `;
+
+  backdrop.appendChild(dialog);
+  document.body.appendChild(backdrop);
+
+  mapDialog = backdrop;
+  mapDialogBody = dialog.querySelector('#mapDialogBody');
+  closeMapDialogBtn = dialog.querySelector('#closeMapDialogBtn');
+
+  closeMapDialogBtn.addEventListener('click', closeMapDialog);
+  mapDialog.addEventListener('click', (event) => {
+    if (event.target === mapDialog) closeMapDialog();
+  });
+}
+
+function closeMapDialog() {
+  if (mapDialog) {
+    mapDialog.hidden = true;
+    mapDialog.style.display = 'none';
+  }
+  if (rideMap) {
+    rideMap.remove();
+    rideMap = null;
+  }
+}
+
+async function showRideMap(rideId) {
+  createMapDialog();
+  mapDialogBody.innerHTML = '<p class="map-dialog-message">Loading map…</p>';
+  mapDialog.hidden = false;
+  mapDialog.style.display = 'grid';
+
+  try {
+    const { response, payload } = await fetchApiJson(`/map/${encodeURIComponent(rideId)}`);
+    if (!response.ok || !payload || typeof payload.summaryPolyline !== 'string' || !payload.summaryPolyline) {
+      mapDialogBody.innerHTML = '<p class="map-dialog-message">No map data available for this ride.</p>';
+      return;
+    }
+
+    const coords = decodePolyline(payload.summaryPolyline);
+    if (!coords.length) {
+      mapDialogBody.innerHTML = '<p class="map-dialog-message">No map data available for this ride.</p>';
+      return;
+    }
+
+    mapDialogBody.innerHTML = '';
+    const mapContainer = document.createElement('div');
+    mapContainer.style.width = '100%';
+    mapContainer.style.height = '100%';
+    mapDialogBody.appendChild(mapContainer);
+
+    if (rideMap) {
+      rideMap.remove();
+    }
+    rideMap = L.map(mapContainer);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19
+    }).addTo(rideMap);
+
+    const routeLine = L.polyline(coords, { color: '#8b0000', weight: 4 }).addTo(rideMap);
+    rideMap.fitBounds(routeLine.getBounds(), { padding: [20, 20] });
+    requestAnimationFrame(() => rideMap && rideMap.invalidateSize());
+  } catch (error) {
+    mapDialogBody.innerHTML = `<p class="map-dialog-message">Failed to load map: ${escapeHtml(error.message)}</p>`;
   }
 }
 
@@ -408,7 +561,7 @@ function isSummableKey(key) {
   return !/^(average|max|weightedAverage)/i.test(key);
 }
 
-function renderTotalRow(headers, rows) {
+function renderTotalRow(headers, rows, showMapColumn) {
   const summable = headers.filter((header) => (
     rows.length > 0 && rows.every((row) => typeof row[header] === 'number') && isSummableKey(header)
   ));
@@ -427,7 +580,7 @@ function renderTotalRow(headers, rows) {
     return '<td></td>';
   }).join('');
 
-  return `<tfoot><tr class="total-row">${cells}</tr></tfoot>`;
+  return `<tfoot><tr class="total-row">${cells}${showMapColumn ? '<td></td>' : ''}</tr></tfoot>`;
 }
 
 function renderTable(payload) {
@@ -441,6 +594,8 @@ function renderTable(payload) {
       return '<p class="empty-state">No attributes selected.</p>';
     }
 
+    const showMapColumn = payload.some((row) => row && row.id !== undefined && row.id !== null && row.id !== '');
+
     const rows = sortState.key && headers.includes(sortState.key)
       ? [...payload].sort((a, b) => {
         const result = compareValues(a[sortState.key], b[sortState.key]);
@@ -448,7 +603,7 @@ function renderTable(payload) {
       })
       : payload;
 
-    const totalRowHtml = renderTotalRow(headers, payload);
+    const totalRowHtml = renderTotalRow(headers, payload, showMapColumn);
 
     return `
       <div class="table-scroll">
@@ -457,8 +612,13 @@ function renderTable(payload) {
       const isActive = sortState.key === header;
       const arrow = isActive ? (sortState.direction === 'asc' ? ' ▲' : ' ▼') : '';
       return `<th data-sort-key="${escapeHtml(header)}" class="sortable${isActive ? ' sorted' : ''}">${escapeHtml(formatHeaderLabel(header))}${arrow}</th>`;
-    }).join('')}</tr></thead>
-          <tbody>${rows.map((row) => `<tr>${headers.map((header) => `<td>${formatCellValue(header, row[header], row)}</td>`).join('')}</tr>`).join('')}</tbody>
+    }).join('')}${showMapColumn ? '<th></th>' : ''}</tr></thead>
+          <tbody>${rows.map((row) => {
+      const mapCell = showMapColumn
+        ? `<td>${row && row.id != null ? `<button type="button" class="map-btn" data-ride-id="${escapeHtml(row.id)}">Map</button>` : ''}</td>`
+        : '';
+      return `<tr>${headers.map((header) => `<td>${formatCellValue(header, row[header], row)}</td>`).join('')}${mapCell}</tr>`;
+    }).join('')}</tbody>
           ${totalRowHtml}
         </table>
       </div>
@@ -663,6 +823,12 @@ function renderResults() {
     });
   });
 
+  resultsPanel.querySelectorAll('.map-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      showRideMap(btn.dataset.rideId);
+    });
+  });
+
   const hasChart = lastQueryEndpoint && lastQueryEndpoint.chart && Array.isArray(lastPayload) && lastPayload.length;
   chartPanelSection.hidden = !hasChart;
   const chartConfig = hasChart
@@ -695,25 +861,9 @@ async function runSelectedQuery() {
   lastQueryValues = values;
 
   const targetPath = endpoint.builder(values);
-  const fullTargetUrl = `${apiBaseUrl}${targetPath}`;
-  const sameOriginAsApi = window.location.origin === apiBaseUrl;
-  const targetUrl = sameOriginAsApi ? fullTargetUrl : `${proxyBaseUrl}${fullTargetUrl}`;
 
   try {
-    const response = await fetch(targetUrl, {
-      method: 'GET',
-      headers: { Accept: 'application/json' },
-      credentials: 'omit',
-      cache: 'no-store'
-    });
-
-    const payloadText = await response.text();
-    let parsedPayload;
-    try {
-      parsedPayload = JSON.parse(payloadText);
-    } catch (error) {
-      parsedPayload = payloadText;
-    }
+    const { response, payload: parsedPayload } = await fetchApiJson(targetPath);
 
     lastPayload = withComputedFields(parsedPayload);
     lastAttributeKeys = orderAttributeKeys(getAttributeKeys(lastPayload), endpoint.columnOrder);
