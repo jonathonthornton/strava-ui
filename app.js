@@ -113,7 +113,6 @@ const endpoints = [
     builder: () => '/activities/eddington-number',
     group: 'Stats & summaries'
   },
-
 ];
 
 const QUERY_GROUP_ORDER = ['Ride details', 'By bike', 'Stats & summaries'];
@@ -121,22 +120,22 @@ const QUERY_GROUP_ORDER = ['Ride details', 'By bike', 'Stats & summaries'];
 let selectedEndpoint = null;
 let lastPayload = null;
 let lastAttributeKeys = [];
-let selectedAttributes = new Set();
+let selectedAttributes = [];
 let sortState = { key: null, direction: 'asc' };
 let lastQueryEndpoint = null;
 let lastQueryValues = {};
 
-const DEFAULT_ATTRIBUTES = new Set([
+const DEFAULT_ATTRIBUTES = [
   'name',
-  'distance',
+  'startDateLocal',
   'movingTime',
-  'averageSpeed',
+  'distance',
+  'sufferScore',
   'totalElevationGain',
   'climbPerKm',
-  'startDateLocal',
-  'sufferScore',
+  'averageSpeed',
   'bike'
-]);
+];
 
 function withComputedFields(payload) {
   if (!Array.isArray(payload)) return payload;
@@ -512,13 +511,7 @@ function parseSortableDate(value) {
   return null;
 }
 
-function formatCellValue(key, value, row) {
-  const url = row && typeof row.url === 'string' && /^https?:\/\//i.test(row.url) ? row.url : null;
-
-  if (key === 'name' && url) {
-    return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(value)}</a>`;
-  }
-
+function formatCellValue(key, value) {
   if (key === 'url' && typeof value === 'string' && /^https?:\/\//i.test(value)) {
     return `<a href="${escapeHtml(value)}" target="_blank" rel="noopener noreferrer">${escapeHtml(value)}</a>`;
   }
@@ -564,13 +557,35 @@ function isSummableKey(key) {
   return !/^(average|max|weightedAverage)/i.test(key);
 }
 
-function renderTotalRow(headers, rows, showMapColumn) {
+const MAP_ACTION_ICON = '<svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.1-7-11a7 7 0 1 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>';
+const STRAVA_ACTION_ICON = '<svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 4h6v6"/><path d="M10 14 20 4"/><path d="M19 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h6"/></svg>';
+
+function rowHasActions(row) {
+  if (!row) return false;
+  const hasMap = row.id !== undefined && row.id !== null && row.id !== '';
+  const hasStrava = typeof row.url === 'string' && /^https?:\/\//i.test(row.url);
+  return hasMap || hasStrava;
+}
+
+function renderActionsCell(row) {
+  const parts = [];
+  if (row && row.id !== undefined && row.id !== null && row.id !== '') {
+    parts.push(`<button type="button" class="text-action map-action" data-ride-id="${escapeHtml(row.id)}" data-ride-name="${escapeHtml(row.name)}">${MAP_ACTION_ICON}Map</button>`);
+  }
+  const url = row && typeof row.url === 'string' && /^https?:\/\//i.test(row.url) ? row.url : null;
+  if (url) {
+    parts.push(`<a class="text-action" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${STRAVA_ACTION_ICON}Strava</a>`);
+  }
+  return `<td class="actions-cell">${parts.join('')}</td>`;
+}
+
+function renderTotalRow(headers, rows, showActionsColumn) {
   const summable = headers.filter((header) => (
     rows.length > 0 && rows.every((row) => typeof row[header] === 'number') && isSummableKey(header)
   ));
   if (!summable.length) return '';
 
-  let labeled = false;
+  let labeled = showActionsColumn;
   const cells = headers.map((header) => {
     if (summable.includes(header)) {
       const total = rows.reduce((sum, row) => sum + row[header], 0);
@@ -583,7 +598,8 @@ function renderTotalRow(headers, rows, showMapColumn) {
     return '<td></td>';
   }).join('');
 
-  return `<tfoot><tr class="total-row">${showMapColumn ? '<td></td>' : ''}${cells}</tr></tfoot>`;
+  const leadingCell = showActionsColumn ? '<td>Total</td>' : '';
+  return `<tfoot><tr class="total-row">${leadingCell}${cells}</tr></tfoot>`;
 }
 
 function renderTable(payload) {
@@ -592,12 +608,12 @@ function renderTable(payload) {
       return '<p class="empty-state">No rows returned.</p>';
     }
 
-    const headers = lastAttributeKeys.filter((key) => selectedAttributes.has(key));
+    const headers = selectedAttributes.filter((key) => lastAttributeKeys.includes(key));
     if (!headers.length) {
       return '<p class="empty-state">No attributes selected.</p>';
     }
 
-    const showMapColumn = payload.some((row) => row && row.id !== undefined && row.id !== null && row.id !== '');
+    const showActionsColumn = payload.some((row) => rowHasActions(row));
 
     const rows = sortState.key && headers.includes(sortState.key)
       ? [...payload].sort((a, b) => {
@@ -606,21 +622,19 @@ function renderTable(payload) {
       })
       : payload;
 
-    const totalRowHtml = renderTotalRow(headers, payload, showMapColumn);
+    const totalRowHtml = renderTotalRow(headers, payload, showActionsColumn);
 
     return `
       <div class="table-scroll">
         <table>
-          <thead><tr>${showMapColumn ? '<th>Map</th>' : ''}${headers.map((header) => {
+          <thead><tr>${showActionsColumn ? '<th>Actions</th>' : ''}${headers.map((header) => {
       const isActive = sortState.key === header;
       const arrow = isActive ? (sortState.direction === 'asc' ? ' ▲' : ' ▼') : '';
       return `<th data-sort-key="${escapeHtml(header)}" class="sortable${isActive ? ' sorted' : ''}">${escapeHtml(formatHeaderLabel(header))}${arrow}</th>`;
     }).join('')}</tr></thead>
           <tbody>${rows.map((row) => {
-      const mapCell = showMapColumn
-        ? `<td>${row && row.id != null ? `<button type="button" class="map-btn" data-ride-id="${escapeHtml(row.id)}" data-ride-name="${escapeHtml(row.name)}">Map</button>` : ''}</td>`
-        : '';
-      return `<tr>${mapCell}${headers.map((header) => `<td>${formatCellValue(header, row[header], row)}</td>`).join('')}</tr>`;
+      const actionsCell = showActionsColumn ? renderActionsCell(row) : '';
+      return `<tr>${actionsCell}${headers.map((header) => `<td>${formatCellValue(header, row[header])}</td>`).join('')}</tr>`;
     }).join('')}</tbody>
           ${totalRowHtml}
         </table>
@@ -629,7 +643,9 @@ function renderTable(payload) {
   }
 
   if (payload && typeof payload === 'object') {
-    const entries = Object.entries(payload).filter(([key]) => selectedAttributes.has(key));
+    const entries = selectedAttributes
+      .filter((key) => Object.prototype.hasOwnProperty.call(payload, key))
+      .map((key) => [key, payload[key]]);
     if (!entries.length) {
       return '<p class="empty-state">No attributes selected.</p>';
     }
@@ -826,7 +842,7 @@ function renderResults() {
     });
   });
 
-  resultsPanel.querySelectorAll('.map-btn').forEach((btn) => {
+  resultsPanel.querySelectorAll('.map-action').forEach((btn) => {
     btn.addEventListener('click', () => {
       showRideMap(btn.dataset.rideId, btn.dataset.rideName);
     });
@@ -871,10 +887,10 @@ async function runSelectedQuery() {
     lastPayload = withComputedFields(parsedPayload);
     lastAttributeKeys = orderAttributeKeys(getAttributeKeys(lastPayload), endpoint.columnOrder);
     if (endpoint.curated) {
-      const defaultKeys = lastAttributeKeys.filter((key) => DEFAULT_ATTRIBUTES.has(key));
-      selectedAttributes = new Set(defaultKeys.length ? defaultKeys : lastAttributeKeys);
+      const defaultKeys = DEFAULT_ATTRIBUTES.filter((key) => lastAttributeKeys.includes(key));
+      selectedAttributes = defaultKeys.length ? defaultKeys : [...lastAttributeKeys];
     } else {
-      selectedAttributes = new Set(lastAttributeKeys);
+      selectedAttributes = [...lastAttributeKeys];
     }
     sortState = { key: null, direction: 'asc' };
 
@@ -883,7 +899,7 @@ async function runSelectedQuery() {
   } catch (error) {
     lastPayload = null;
     lastAttributeKeys = [];
-    selectedAttributes = new Set();
+    selectedAttributes = [];
     resultsPanel.innerHTML = `
       ${renderQueryInfo(lastQueryEndpoint, lastQueryValues)}
       <p class="empty-state">Request failed: ${escapeHtml(error.message)}</p>

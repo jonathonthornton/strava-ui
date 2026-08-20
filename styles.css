@@ -459,18 +459,44 @@ button.secondary {
   margin-top: 0.9rem;
 }
 
-.map-btn {
-  padding: 0.4rem 0.8rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+.actions-cell {
+  white-space: nowrap;
 }
 
-.map-btn:disabled {
+.text-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  color: var(--series-2);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+
+.text-action:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+.text-action:disabled {
   opacity: 0.6;
   cursor: default;
+  text-decoration: none;
+}
+
+.text-action + .text-action {
+  margin-left: 1rem;
+}
+
+.action-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
 }
 
 .map-dialog .dialog {
